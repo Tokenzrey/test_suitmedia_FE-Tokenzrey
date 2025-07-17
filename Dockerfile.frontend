@@ -1,0 +1,39 @@
+# Base image with pnpm installation
+FROM node:20-alpine3.19 AS base
+WORKDIR /app/frontend
+
+# Install pnpm globally
+RUN npm i -g pnpm
+
+# Dependencies stage
+FROM base AS deps
+WORKDIR /app/frontend
+
+# Copy package.json and pnpm-lock.yaml before installing dependencies
+COPY package.json pnpm-lock.yaml ./
+
+# Install all dependencies
+RUN pnpm install --frozen-lockfile
+
+# Build stage
+FROM deps AS builder
+WORKDIR /app/frontend
+
+# Copy the entire project to build it
+COPY . .
+
+# Build the project
+RUN pnpm build
+
+# Production stage - only include production dependencies
+FROM node:20-alpine3.19 AS runner
+WORKDIR /app/frontend
+
+# Copy only necessary files from builder stage
+COPY --from=builder /app/frontend/.next/standalone ./
+COPY --from=builder /app/frontend/.next/static ./.next/static
+COPY --from=builder /app/frontend/public ./public
+COPY --from=builder /app/frontend/next.config.mjs ./next.config.mjs
+
+# Expose the port
+EXPOSE 3000

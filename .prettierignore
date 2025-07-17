@@ -1,0 +1,7 @@
+.next
+node_modules
+package.json
+.lintstagedrc
+.prettierrc
+public
+next-env.d.ts

@@ -1,0 +1,316 @@
+@import 'tailwindcss';
+
+/* Enable dark mode using class strategy */
+@custom-variant dark (&:is(.dark *));
+
+/* Configure Tailwind animations plugin */
+@plugin 'tailwindcss-animate';
+
+/* Base theme configuration */
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 0 0% 3.9%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 83.1%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* CSS variable equivalent for tooling compatibility */
+:root {
+  --background: hsl(0 0% 100%);
+  --foreground: hsl(0 0% 3.9%);
+  --card: hsl(0 0% 100%);
+  --card-foreground: hsl(0 0% 3.9%);
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(0 0% 3.9%);
+  --primary: hsl(0 0% 9%);
+  --primary-foreground: hsl(0 0% 98%);
+  --secondary: hsl(0 0% 96.1%);
+  --secondary-foreground: hsl(0 0% 9%);
+  --muted: hsl(0 0% 96.1%);
+  --muted-foreground: hsl(0 0% 45.1%);
+  --accent: hsl(0 0% 96.1%);
+  --accent-foreground: hsl(0 0% 9%);
+  --destructive: hsl(0 84.2% 60.2%);
+  --destructive-foreground: hsl(0 0% 98%);
+  --border: hsl(0 0% 89.8%);
+  --input: hsl(0 0% 89.8%);
+  --ring: hsl(0 0% 3.9%);
+  --chart-1: hsl(12 76% 61%);
+  --chart-2: hsl(173 58% 39%);
+  --chart-3: hsl(197 37% 24%);
+  --chart-4: hsl(43 74% 66%);
+  --chart-5: hsl(27 87% 67%);
+  --radius: 0.6rem;
+}
+
+.dark {
+  --background: hsl(0 0% 3.9%);
+  --foreground: hsl(0 0% 98%);
+  --card: hsl(0 0% 3.9%);
+  --card-foreground: hsl(0 0% 98%);
+  --popover: hsl(0 0% 3.9%);
+  --popover-foreground: hsl(0 0% 98%);
+  --primary: hsl(0 0% 98%);
+  --primary-foreground: hsl(0 0% 9%);
+  --secondary: hsl(0 0% 14.9%);
+  --secondary-foreground: hsl(0 0% 98%);
+  --muted: hsl(0 0% 14.9%);
+  --muted-foreground: hsl(0 0% 63.9%);
+  --accent: hsl(0 0% 14.9%);
+  --accent-foreground: hsl(0 0% 98%);
+  --destructive: hsl(0 62.8% 30.6%);
+  --destructive-foreground: hsl(0 0% 98%);
+  --border: hsl(0 0% 14.9%);
+  --input: hsl(0 0% 14.9%);
+  --ring: hsl(0 0% 83.1%);
+  --chart-1: hsl(220 70% 50%);
+  --chart-2: hsl(160 60% 45%);
+  --chart-3: hsl(30 80% 55%);
+  --chart-4: hsl(280 65% 60%);
+  --chart-5: hsl(340 75% 55%);
+}
+
+/* Theme configuration */
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* Extended color palette migrated from tailwind.config.js */
+@theme {
+  /* Font Families */
+  --font-poppins: var(--font-poppins);
+  --font-satoshi: var(--font-satoshi);
+  --font-adelphe: var(--font-adelphe);
+  --font-libre: var(--font-libreCaslon);
+  --font-inter: var(--font-inter);
+  --font-playfair: var(--font-PlayfairDisplay);
+
+  /* Custom Line Heights */
+  --line-height-110: 1.1;
+
+  /* Custom Font Sizes */
+  --font-size-mid: 15px;
+  --line-height-mid: 22px;
+  --font-size-macro: 17px;
+  --line-height-macro: 26px;
+
+  /* White Color Palette */
+  --color-white: #ffffff;
+  --color-white-light-1: #ffffff;
+  --color-white-light-2: #fefefd;
+  --color-white-light-3: #fefdfa;
+  --color-white-light-4: #fefcf8;
+  --color-white-light-5: #fefbf4;
+  --color-white-main: #fdfaf0;
+  --color-white-dark-1: #ede8db;
+  --color-white-dark-2: #dcd7c6;
+  --color-white-dark-3: #cbc6b1;
+  --color-white-dark-4: #b9b49c;
+  --color-white-dark-5: #a8a287;
+
+  /* Black Color Palette */
+  --color-black: #000000;
+  --color-black-light-1: #778087;
+  --color-black-light-2: #697178;
+  --color-black-light-3: #5b6369;
+  --color-black-light-4: #4d555a;
+  --color-black-light-5: #3f474b;
+  --color-black-main: #31393c;
+  --color-black-dark-1: #2b3436;
+  --color-black-dark-2: #242f30;
+  --color-black-dark-3: #1e2a2a;
+  --color-black-dark-4: #172425;
+  --color-black-dark-5: #101f1f;
+
+  /* Blue Color Palette */
+  --color-blue-light-1: #78c6ff;
+  --color-blue-light-2: #67b6ff;
+  --color-blue-light-3: #55a6ff;
+  --color-blue-light-4: #4496ff;
+  --color-blue-light-5: #3386ff;
+  --color-blue-main: #2176ff;
+  --color-blue-dark-1: #1c66e0;
+  --color-blue-dark-2: #1655c0;
+  --color-blue-dark-3: #1145a1;
+  --color-blue-dark-4: #0b3481;
+  --color-blue-dark-5: #062461;
+
+  /* Yellow Color Palette */
+  --color-yellow-light-1: #ffff90;
+  --color-yellow-light-2: #fff480;
+  --color-yellow-light-3: #ffea70;
+  --color-yellow-light-4: #ffdf60;
+  --color-yellow-light-5: #fed450;
+  --color-yellow-main: #fdca40;
+  --color-yellow-dark-1: #e9b536;
+  --color-yellow-dark-2: #d5a02c;
+  --color-yellow-dark-3: #c18b22;
+  --color-yellow-dark-4: #ad7518;
+  --color-yellow-dark-5: #995f0e;
+
+  /* Red Color Palette */
+  --color-red-light-1: #ff8080;
+  --color-red-light-2: #ff6f6f;
+  --color-red-light-3: #ff5e5e;
+  --color-red-light-4: #f84d4d;
+  --color-red-light-5: #f03c3c;
+  --color-red-main: #e82c2c;
+  --color-red-dark-1: #d02121;
+  --color-red-dark-2: #b91616;
+  --color-red-dark-3: #a20b0b;
+  --color-red-dark-4: #8b0000;
+  --color-red-dark-5: #740000;
+
+  /* Green Color Palette */
+  --color-green-light-1: #8cff91;
+  --color-green-light-2: #7af680;
+  --color-green-light-3: #69e56f;
+  --color-green-light-4: #57d55e;
+  --color-green-light-5: #45c54d;
+  --color-green-main: #34b53c;
+  --color-green-dark-1: #2aa32d;
+  --color-green-dark-2: #207f1e;
+  --color-green-dark-3: #165c0f;
+  --color-green-dark-4: #0c3800;
+  --color-green-dark-5: #021500;
+
+  /* Purple Color Palette */
+  --color-purple-light-1: #da8afd;
+  --color-purple-light-2: #ca79fd;
+  --color-purple-light-3: #ba67fd;
+  --color-purple-light-4: #57d55e;
+  --color-purple-light-5: #9a44fd;
+  --color-purple-main: #8a33fd;
+  --color-purple-dark-1: #792ce3;
+  --color-purple-dark-2: #6925c9;
+  --color-purple-dark-3: #581faf;
+  --color-purple-dark-4: #481895;
+  --color-purple-dark-5: #021500;
+
+  /* Orange Color Palette */
+  --color-orange-light-1: #fcc471;
+  --color-orange-light-2: #fbb360;
+  --color-orange-light-3: #faa24f;
+  --color-orange-light-4: #faa24f;
+  --color-orange-light-5: #f7802d;
+  --color-orange-main: #f56f1c;
+  --color-orange-dark-1: #e35f10;
+  --color-orange-dark-2: #d14f05;
+  --color-orange-dark-3: #bf3f00;
+  --color-orange-dark-4: #ad2f00;
+  --color-orange-dark-5: #9b1f00;
+
+  /* Teal Color Palette */
+  --color-teal-light-1: #73e4f6;
+  --color-teal-light-2: #62d9e6;
+  --color-teal-light-3: #50ced6;
+  --color-teal-light-4: #3fc3c6;
+  --color-teal-light-5: #2db8b6;
+  --color-teal-main: #1cada6;
+  --color-teal-dark-1: #199a96;
+  --color-teal-dark-2: #168786;
+  --color-teal-dark-3: #137476;
+  --color-teal-dark-4: #106166;
+  --color-teal-dark-5: #0d4d56;
+
+  /* Base Colors */
+  --color-base-dark: #212121;
+  --color-base-gray: #f0f2f5;
+  --color-base-nav: #9aa2b1;
+  --color-base-icon: #757575;
+  --color-base-border: #e4e7eb;
+  --color-base-subtle: #2f2f33;
+
+  /* Background Gradients */
+  --background-gradient-radial: radial-gradient(var(--tw-gradient-stops));
+  --background-gradient-conic: conic-gradient(
+    from 180deg at 50% 50%,
+    var(--tw-gradient-stops)
+  );
+  --background-blue-gradient: linear-gradient(270deg, #00aae7 40%, #0076c0 65%);
+}
