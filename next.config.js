@@ -15,7 +15,10 @@
 const ContentSecurityPolicy = `
   default-src 'self';
   script-src 'self' 'unsafe-inline' 'unsafe-eval';
-  style-src 'self' 'unsafe-inline';
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  font-src 'self' https://fonts.gstatic.com;
+  img-src 'self' https://images.unsplash.com data:;
+  connect-src 'self' https://suitmedia-backend.suitdev.com;
   object-src 'none';
   base-uri 'self';
   frame-ancestors 'self';
