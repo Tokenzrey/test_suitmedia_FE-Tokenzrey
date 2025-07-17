@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import Image from 'next/image';
 
-// --- Types ---
 type Idea = {
   id: number;
   title: string;
@@ -20,16 +20,14 @@ type ApiResponse = {
 };
 
 const API_BASE_URL = 'https://suitmedia-backend.suitdev.com/api/ideas';
-const HEADER_HEIGHT = 72; // px, adjust if needed
+const HEADER_HEIGHT = 72;
 
-const IdeasPage: React.FC = () => {
-  // --- State Management ---
+const IdeasPage = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(10);
   const [sortBy, setSortBy] = useState<string>('-published_at');
   const [headerHidden, setHeaderHidden] = useState<boolean>(false);
 
-  // --- Persist State to LocalStorage ---
   useEffect(() => {
     const savedState = localStorage.getItem('ideaPageState');
     if (savedState) {
@@ -47,8 +45,10 @@ const IdeasPage: React.FC = () => {
     );
   }, [currentPage, itemsPerPage, sortBy]);
 
-  // --- Fetch Ideas ---
   const fetchIdeas = async (): Promise<ApiResponse> => {
+    if (typeof window === 'undefined') {
+      return { data: [], meta: { total: 0, last_page: 1 } };
+    }
     const params = new URLSearchParams({
       'page[number]': currentPage.toString(),
       'page[size]': itemsPerPage.toString(),
@@ -65,9 +65,12 @@ const IdeasPage: React.FC = () => {
   const { data, error, isLoading } = useQuery<ApiResponse, Error>({
     queryKey: ['ideas', currentPage, itemsPerPage, sortBy],
     queryFn: fetchIdeas,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    enabled: typeof window !== 'undefined',
+    staleTime: 2 * 60 * 1000,
   });
 
-  // --- Scroll Header Hide/Show ---
   const lastScrollY = useRef<number>(0);
 
   useEffect(() => {
@@ -80,11 +83,9 @@ const IdeasPage: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // --- Pagination ---
   const totalItems = data?.meta?.total ?? 0;
   const totalPages = data?.meta?.last_page ?? 1;
 
-  // --- Render Functions ---
   const renderPosts = () => {
     if (isLoading)
       return (
@@ -126,16 +127,19 @@ const IdeasPage: React.FC = () => {
           key={post.id}
           className='bg-white rounded-lg shadow-md overflow-hidden transform hover:-translate-y-1 transition-transform duration-300'
         >
-          <img
-            src={imageUrl}
-            alt={post.title}
-            className='w-full h-48 object-cover'
-            loading='lazy'
-            onError={(e) => {
-              (e.target as HTMLImageElement).src =
-                'https://placehold.co/400x300/e2e8f0/cbd5e0?text=Error';
-            }}
-          />
+          <div className='w-full h-48 relative'>
+            <Image
+              src={imageUrl}
+              alt={post.title}
+              fill
+              className='object-cover rounded-t-lg'
+              sizes='(max-width: 768px) 100vw, 25vw'
+              onError={(e: any) => {
+                e.target.src =
+                  'https://placehold.co/400x300/e2e8f0/cbd5e0?text=Error';
+              }}
+            />
+          </div>
           <div className='p-4'>
             <p className='text-xs text-gray-500 mb-2'>{publishedDate}</p>
             <h3
@@ -152,7 +156,6 @@ const IdeasPage: React.FC = () => {
 
   const renderPagination = () => {
     if (totalPages <= 1) return null;
-
     const buttons: (number | '...')[] = [];
     for (let i = 1; i <= totalPages; i++) {
       if (
@@ -221,10 +224,8 @@ const IdeasPage: React.FC = () => {
     return `Showing ${startItem} - ${endItem} of ${totalItems} items`;
   };
 
-  // --- Main Render ---
   return (
     <>
-      {/* Global CSS Tailwind classes only */}
       <link
         rel='preconnect'
         href='https://fonts.googleapis.com'
@@ -240,7 +241,6 @@ const IdeasPage: React.FC = () => {
         rel='stylesheet'
       />
 
-      {/* Header */}
       <header
         id='main-header'
         className={`fixed top-0 left-0 right-0 z-50 bg-[#FF6600] shadow-md transition-transform duration-300 ${
@@ -250,11 +250,9 @@ const IdeasPage: React.FC = () => {
       >
         <div className='container mx-auto px-6 py-4'>
           <nav className='flex items-center justify-between'>
-            {/* Logo */}
             <a href='#' className='text-2xl font-bold text-white'>
               Suitmedia
             </a>
-            {/* Menu Navigasi */}
             <div className='hidden md:flex items-center space-x-8'>
               <a href='#' className='text-white/90 hover:text-white'>
                 Work
@@ -298,7 +296,6 @@ const IdeasPage: React.FC = () => {
       </header>
 
       <main>
-        {/* Banner Section */}
         <section
           className='relative h-[60vh] flex items-center justify-center text-white bg-cover bg-center bg-no-repeat'
           style={{
@@ -316,13 +313,10 @@ const IdeasPage: React.FC = () => {
               Where all our great things begin
             </p>
           </div>
-          {/* Segitiga Putih di Kanan Bawah */}
           <div className='absolute bottom-0 right-0 w-0 h-0 border-b-[12vh] md:border-b-[15vh] border-l-[100vw] border-b-white border-l-transparent z-20'></div>
         </section>
 
-        {/* Posts Section */}
         <section className='container mx-auto px-6 py-12'>
-          {/* Controls */}
           <div className='flex flex-col md:flex-row justify-between items-center mb-8 gap-4'>
             <p id='showing-info' className='text-gray-600'>
               {isLoading || !data ? 'Loading...' : updateShowingInfo()}
@@ -369,7 +363,6 @@ const IdeasPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Post Grid */}
           <div
             id='post-grid'
             className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6'
@@ -377,7 +370,6 @@ const IdeasPage: React.FC = () => {
             {renderPosts()}
           </div>
 
-          {/* Pagination */}
           <div
             id='pagination-controls'
             className='flex justify-center items-center mt-12 space-x-2'
