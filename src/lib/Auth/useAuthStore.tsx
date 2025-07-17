@@ -44,7 +44,7 @@ const useAuthStoreBase = create<AuthStoreType>()(
           // Use a more production-friendly error handling approach
           // that doesn't leak to console in production
           if (process.env.NODE_ENV !== 'production') {
-            // eslint-disable-next-line no-console
+             
             console.error('Authentication error:', error);
           }
           // Could integrate with error tracking service here
@@ -71,7 +71,7 @@ const useAuthStoreBase = create<AuthStoreType>()(
           );
         } catch (error) {
           if (process.env.NODE_ENV !== 'production') {
-            // eslint-disable-next-line no-console
+             
             console.error('Logout error:', error);
           }
           // Could integrate with error tracking service here

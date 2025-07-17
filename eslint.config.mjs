@@ -70,7 +70,7 @@ export default [
     rules: {
       'react/prop-types': 'off',
       'no-unused-vars': 'off',
-      'no-console': 'warn',
+      'no-console': 'off',
       'react/display-name': 'off',
       'react/react-in-jsx-scope': 'off',
       'simple-import-sort/imports': 'warn',

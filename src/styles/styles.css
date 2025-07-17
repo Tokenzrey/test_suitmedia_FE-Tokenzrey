@@ -72,6 +72,22 @@
   }
 }
 
+@layer utilities {
+  @keyframes shimmer {
+    0% {
+      background-position: -700px 0;
+    }
+    100% {
+      background-position: 700px 0;
+    }
+  }
+  .animate-shimmer {
+    background: linear-gradient(90deg, #f3f4f6 0%, #e5e7eb 40%, #f3f4f6 80%);
+    background-size: 1400px 100%;
+    animation: shimmer 1.6s infinite linear;
+  }
+}
+
 /* CSS variable equivalent for tooling compatibility */
 :root {
   --background: hsl(0 0% 100%);

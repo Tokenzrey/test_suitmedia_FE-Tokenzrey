@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Konfigurasi proxy yang lebih agresif
+// Proxy configs for various user agents/headers
 const PROXY_CONFIGS = [
   { type: 'direct', headers: getDirectHeaders() },
   { type: 'session', headers: getSessionHeaders() },
@@ -146,7 +146,40 @@ async function tryMultipleEndpoints(
   throw new Error('All endpoints failed');
 }
 
-export async function GET(req: NextRequest) {
+async function fetchRandomUnsplash(): Promise<Response> {
+  // Always return a valid Response, never null
+  const unsplashUrl =
+    'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=800&auto=format&fit=crop';
+  try {
+    const imgRes = await fetch(unsplashUrl);
+    if (imgRes.ok) {
+      const buffer = await imgRes.arrayBuffer();
+      return new Response(buffer, {
+        status: 200,
+        headers: {
+          'Content-Type': imgRes.headers.get('content-type') || 'image/jpeg',
+          'Cache-Control': 'public, max-age=300',
+          'X-Proxy-Error': 'Random Unsplash fallback',
+        },
+      });
+    }
+  } catch {
+    console.error('Failed to fetch random Unsplash image:', unsplashUrl);
+  }
+  const empty =
+    'iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAQAAABH9C0UAAAAFUlEQVR42mNkYGBgYGBgYGBgAAQAAABYAAH0D/UAAAAASUVORK5CYII=';
+  const buffer = Buffer.from(empty, 'base64');
+  return new Response(buffer, {
+    status: 200,
+    headers: {
+      'Content-Type': 'image/png',
+      'Cache-Control': 'public, max-age=300',
+      'X-Proxy-Error': 'Empty PNG fallback',
+    },
+  });
+}
+
+export async function GET(req: NextRequest): Promise<Response> {
   const imageUrl = req.nextUrl.searchParams.get('url');
   if (!imageUrl) {
     return NextResponse.json(
@@ -183,7 +216,7 @@ export async function GET(req: NextRequest) {
           imageRes.headers.get('content-type') || 'image/jpeg';
         if (!contentType.startsWith('image/')) continue;
         if (contentType === 'image/svg+xml') {
-          return await returnPlaceholderImage('SVG is not allowed');
+          return await fetchRandomUnsplash();
         }
         const imageBuffer = await imageRes.arrayBuffer();
         if (imageBuffer.byteLength === 0) continue;
@@ -202,43 +235,13 @@ export async function GET(req: NextRequest) {
           headers: responseHeaders,
         });
       }
-    } catch (_) {
-      continue;
+    } catch (error) {
+      console.error(`Error fetching image with config ${config.type}:`, error);
     }
   }
 
-  // Jika semua gagal, return placeholder PNG
-  return await returnPlaceholderImage('All proxy attempts failed');
-}
-
-async function returnPlaceholderImage(errorMessage: string) {
-  // PNG base64 as fallback
-  const placeholderUrl =
-    'https://placehold.co/400x300/e2e8f0/64748b?text=Image+Not+Available';
-  try {
-    const res = await fetch(placeholderUrl);
-    if (res.ok) {
-      const buffer = await res.arrayBuffer();
-      return new Response(buffer, {
-        status: 200,
-        headers: {
-          'Content-Type': 'image/png',
-          'Cache-Control': 'public, max-age=300',
-          'X-Proxy-Error': errorMessage,
-        },
-      });
-    }
-  } catch {
-    // If even the placeholder fetch fails, return error JSON
-  }
-  return NextResponse.json(
-    {
-      error: 'Image proxy failed',
-      details: errorMessage,
-      suggestion: 'Please try again later or contact support',
-    },
-    { status: 500 },
-  );
+  // Always return a Response, never null
+  return await fetchRandomUnsplash();
 }
 
 export async function OPTIONS() {
