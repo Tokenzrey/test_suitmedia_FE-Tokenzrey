@@ -73,10 +73,19 @@ const nextConfig = {
   },
 
   images: {
-    domains: [
-      'images.unsplash.com',
-      'suitmedia-backend.suitdev.com',
-      'assets.suitdev.com',
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'suitmedia-backend.suitdev.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'assets.suitdev.com',
+      },
     ],
   },
   // Apply security headers to every route

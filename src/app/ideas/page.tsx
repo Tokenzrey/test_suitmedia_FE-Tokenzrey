@@ -5,31 +5,15 @@ import { useQuery } from '@tanstack/react-query';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-
-type IdeaImage = { url: string };
-type Idea = {
-  id: number;
-  title: string;
-  published_at: string;
-  small_image?: IdeaImage[];
-  medium_image?: IdeaImage[];
-};
-type ApiResponse = {
-  data: Idea[];
-  meta: {
-    total: number;
-    last_page: number;
-  };
-  banner?: {
-    url: string;
-  };
-};
+import type { SuitmediaIdeas, IdeaPost } from '@/types/ideas';
 
 const API_BASE_URL = '/api/ideas';
 const HEADER_HEIGHT = 72;
+const ORANGE = '#FF6600';
+const FONT_FAMILY = 'Inter, Arial, sans-serif';
 const SORT_OPTIONS = [
-  { value: '-published_at', label: 'Terbaru' },
-  { value: 'published_at', label: 'Terlama' },
+  { value: '-published_at', label: 'Newest' },
+  { value: 'published_at', label: 'Oldest' },
 ];
 const PER_PAGE_OPTIONS = [10, 20, 50];
 
@@ -47,6 +31,11 @@ function getMenu(path: string) {
       path.startsWith(item.href) ||
       (item.href === '/ideas' && path === '/ideas'),
   }));
+}
+
+function getProxyUrl(url: string) {
+  if (!url.startsWith('https://assets.suitdev.com/')) return url;
+  return `/api/image-proxy?url=${encodeURIComponent(url)}`;
 }
 
 const IdeasPage = () => {
@@ -84,7 +73,7 @@ const IdeasPage = () => {
     return () => window.removeEventListener('scroll', handler);
   }, []);
 
-  const fetchIdeas = async (): Promise<ApiResponse> => {
+  const fetchIdeas = async (): Promise<SuitmediaIdeas> => {
     const params = new URLSearchParams({
       'page[number]': currentPage.toString(),
       'page[size]': itemsPerPage.toString(),
@@ -94,29 +83,26 @@ const IdeasPage = () => {
     params.append('append[]', 'medium_image');
     const response = await fetch(`${API_BASE_URL}?${params.toString()}`, {
       method: 'GET',
-      headers: {
-        Accept: 'application/json',
-      },
+      headers: { Accept: 'application/json' },
     });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     return response.json();
   };
 
-  const { data, error, isLoading } = useQuery<ApiResponse, Error>({
+  const { data, error, isLoading } = useQuery<SuitmediaIdeas, Error>({
     queryKey: ['ideas', currentPage, itemsPerPage, sortBy],
     queryFn: fetchIdeas,
     staleTime: 2 * 60 * 1000,
   });
 
   const bannerUrl =
-    data?.banner?.url ||
     'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=2070&auto=format&fit=crop';
 
   const [bannerOffset, setBannerOffset] = useState<number>(0);
   useEffect(() => {
     const onScroll = () => {
       const scrolled = window.scrollY;
-      setBannerOffset(scrolled * 0.5);
+      setBannerOffset(scrolled * 0.3);
     };
     window.addEventListener('scroll', onScroll);
     return () => window.removeEventListener('scroll', onScroll);
@@ -145,13 +131,12 @@ const IdeasPage = () => {
           No ideas found.
         </p>
       );
-    return data.data.map((post: Idea) => {
-      const imageUrl =
-        post.small_image && post.small_image[0]
-          ? post.small_image[0].url
-          : `https://placehold.co/400x300/e2e8f0/cbd5e0?text=No+Image`;
+    return data.data.map((post: IdeaPost) => {
+      let imageUrl = post.small_image?.[0]?.url ?? '';
+      if (!imageUrl)
+        imageUrl = `https://placehold.co/400x300/e2e8f0/cbd5e0?text=No+Image`;
       const publishedDate = new Date(post.published_at).toLocaleDateString(
-        'id-ID',
+        'en-GB',
         {
           day: 'numeric',
           month: 'long',
@@ -163,25 +148,44 @@ const IdeasPage = () => {
           key={post.id}
           className={cn(
             'bg-white rounded-lg shadow-md overflow-hidden flex flex-col',
+            'transition-all duration-200 hover:shadow-lg',
           )}
         >
           <div className={cn('w-full', 'aspect-[4/3]', 'relative')}>
             <Image
-              src={imageUrl}
+              src={getProxyUrl(imageUrl)}
               alt={post.title}
               fill
-              className={cn('object-cover')}
               loading='lazy'
               sizes='(max-width: 768px) 100vw, 25vw'
+              unoptimized
+              className={cn('object-cover')}
               style={{ borderRadius: '0.5rem 0.5rem 0 0' }}
             />
           </div>
           <div className={cn('p-4 flex-1 flex flex-col')}>
-            <p className={cn('text-xs text-gray-500 mb-2')}>{publishedDate}</p>
+            <p
+              className={cn(
+                'text-xs text-gray-500 mb-2',
+                'font-medium',
+                'tracking-wide',
+              )}
+            >
+              {publishedDate.toUpperCase()}
+            </p>
             <h3
-              className={cn('font-bold text-md', 'line-clamp-3')}
+              className={cn(
+                'font-semibold text-base',
+                'line-clamp-3',
+                'text-[#212121]',
+                'mb-0',
+              )}
               title={post.title}
-              style={{ maxHeight: '4.5em', minHeight: '4.5em' }}
+              style={{
+                maxHeight: '4.5em',
+                minHeight: '4.5em',
+                fontFamily: FONT_FAMILY,
+              }}
             >
               {post.title}
             </h3>
@@ -206,10 +210,13 @@ const IdeasPage = () => {
       }
     }
     return (
-      <>
+      <div
+        className='flex items-center gap-1 justify-center mt-6 mb-2'
+        style={{ fontFamily: FONT_FAMILY }}
+      >
         <button
           className={cn(
-            'px-3 py-1 border rounded-md text-sm',
+            'px-2 py-1 rounded',
             currentPage === 1
               ? 'text-gray-400 cursor-not-allowed'
               : 'hover:bg-gray-200',
@@ -221,16 +228,16 @@ const IdeasPage = () => {
         </button>
         {buttons.map((btn, idx) =>
           btn === '...' ? (
-            <span key={idx} className={cn('px-3 py-1')}>
+            <span key={idx} className={cn('px-2 py-1 text-gray-400')}>
               ...
             </span>
           ) : (
             <button
               key={idx}
               className={cn(
-                'px-3 py-1 border rounded-md text-sm',
+                'px-2 py-1 rounded transition-all',
                 btn === currentPage
-                  ? 'bg-[#FF6600] text-white border-[#FF6600]'
+                  ? 'bg-[#FF6600] text-white font-bold'
                   : 'hover:bg-gray-200',
               )}
               onClick={() => typeof btn === 'number' && setCurrentPage(btn)}
@@ -241,7 +248,7 @@ const IdeasPage = () => {
         )}
         <button
           className={cn(
-            'px-3 py-1 border rounded-md text-sm',
+            'px-2 py-1 rounded',
             currentPage === totalPages
               ? 'text-gray-400 cursor-not-allowed'
               : 'hover:bg-gray-200',
@@ -253,14 +260,14 @@ const IdeasPage = () => {
         >
           &raquo;
         </button>
-      </>
+      </div>
     );
   };
 
   const updateShowingInfo = () => {
     const startItem = (currentPage - 1) * itemsPerPage + 1;
     const endItem = Math.min(startItem + itemsPerPage - 1, totalItems);
-    return `Showing ${startItem} - ${endItem} of ${totalItems} items`;
+    return `Showing ${startItem} - ${endItem} of ${totalItems}`;
   };
 
   const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -273,69 +280,74 @@ const IdeasPage = () => {
   const menu = getMenu(pathname);
 
   return (
-    <div className={cn('font-sans bg-[#f8f9fa] min-h-screen')}>
+    <div
+      style={{
+        fontFamily: FONT_FAMILY,
+        background: '#fafafb',
+        minHeight: '100vh',
+      }}
+    >
       <header
         id='main-header'
         className={cn(
-          'fixed top-0 left-0 right-0 z-50 shadow-md transition-transform duration-300 bg-white bg-opacity-90 backdrop-blur',
+          'fixed top-0 left-0 right-0 z-50 transition-transform duration-200',
           headerHidden && '-translate-y-full',
         )}
-        style={{ height: HEADER_HEIGHT }}
+        style={{
+          height: HEADER_HEIGHT,
+          background: ORANGE,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+          backdropFilter: 'blur(4px)',
+        }}
       >
-        <div className={cn('container mx-auto px-6 py-4')}>
-          <nav className={cn('flex items-center justify-between')}>
-            <a href='/' className={cn('text-2xl font-bold text-[#FF6600]')}>
-              Suitmedia
+        <div
+          className='mx-auto px-10 py-0'
+          style={{
+            height: HEADER_HEIGHT,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <div className='flex items-center gap-8 h-full'>
+            <a href='/' className='flex items-center h-full'>
+              <img
+                src='/logo-suitmedia.svg'
+                alt='Suitmedia'
+                style={{ height: 32, marginRight: 12 }}
+              />
             </a>
-            <div className={cn('hidden md:flex items-center space-x-8')}>
-              {menu.map((item) => (
-                <a
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    'transition-colors',
-                    item.active
-                      ? 'font-bold text-[#FF6600] border-b-2 border-[#FF6600] pb-1'
-                      : 'text-gray-700 hover:text-[#FF6600]',
-                  )}
-                >
-                  {item.label}
-                </a>
-              ))}
-            </div>
-            <div className={cn('md:hidden')}>
-              <button className={cn('text-[#FF6600] focus:outline-none')}>
-                <svg
-                  className={cn('w-6 h-6')}
-                  fill='none'
-                  stroke='currentColor'
-                  viewBox='0 0 24 24'
-                  xmlns='http://www.w3.org/2000/svg'
-                >
-                  <path
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                    strokeWidth={2}
-                    d='M4 6h16M4 12h16m-7 6h7'
-                  ></path>
-                </svg>
-              </button>
-            </div>
+          </div>
+          <nav className='flex items-center gap-8'>
+            {menu.map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  'transition-colors font-medium px-2 py-1',
+                  item.active
+                    ? 'text-white border-b-2 border-white'
+                    : 'text-white/90 hover:text-white',
+                )}
+                style={{ fontFamily: FONT_FAMILY }}
+              >
+                {item.label}
+              </a>
+            ))}
           </nav>
         </div>
       </header>
       <main>
         <section
-          className={cn(
-            'relative h-[60vh] flex items-center justify-center text-white overflow-hidden',
-          )}
+          className='relative flex items-center justify-center text-white overflow-hidden'
           style={{
-            marginTop: HEADER_HEIGHT,
+            height: '340px',
             background: 'transparent',
+            marginTop: HEADER_HEIGHT,
           }}
         >
           <div
-            className={cn('absolute inset-0', 'w-full h-full z-0')}
+            className='absolute inset-0 w-full h-full z-0'
             style={{
               willChange: 'transform',
               transform: `translateY(${bannerOffset}px)`,
@@ -346,53 +358,63 @@ const IdeasPage = () => {
               alt='Banner'
               fill
               priority
-              className={cn('object-cover')}
+              className='object-cover'
               style={{ zIndex: 0 }}
             />
-            <div className={cn('absolute inset-0 bg-black/60')}></div>
+            <div className='absolute inset-0 bg-black/60'></div>
             <div
-              className={cn(
-                'absolute bottom-0 right-0 w-0 h-0 border-b-[12vh] md:border-b-[15vh] border-l-[100vw] border-b-white border-l-transparent z-20',
-              )}
+              className='absolute bottom-0 right-0 w-0 h-0'
+              style={{
+                borderBottom: '64px solid #fff',
+                borderLeft: '100vw solid transparent',
+                zIndex: 20,
+              }}
             />
           </div>
-          <div
-            className={cn(
-              'relative z-10 text-center px-4 flex flex-col items-center justify-center w-full',
-            )}
-          >
-            <h1 className={cn('text-5xl md:text-7xl font-bold drop-shadow-lg')}>
+          <div className='relative z-10 text-center px-4 flex flex-col items-center justify-center w-full'>
+            <h1
+              className='text-4xl font-bold drop-shadow-lg'
+              style={{ fontFamily: FONT_FAMILY, letterSpacing: 0.5 }}
+            >
               Ideas
             </h1>
-            <p className={cn('text-xl md:text-2xl mt-4 drop-shadow-md')}>
+            <p
+              className='text-lg mt-2 drop-shadow-md'
+              style={{ fontFamily: FONT_FAMILY, fontWeight: 400 }}
+            >
               Where all our great things begin
             </p>
           </div>
         </section>
-        <section className={cn('container mx-auto px-6 py-12')}>
+        <section
+          className='mx-auto px-10'
+          style={{ maxWidth: 1200, paddingTop: 36 }}
+        >
           <div
-            className={cn(
-              'flex flex-col md:flex-row justify-between items-center mb-8 gap-4',
-            )}
+            className='flex flex-col md:flex-row justify-between items-center mb-8 gap-4'
+            style={{ fontFamily: FONT_FAMILY }}
           >
-            <p id='showing-info' className={cn('text-gray-600')}>
+            <p id='showing-info' className='text-gray-800 text-sm'>
               {isLoading || !data ? 'Loading...' : updateShowingInfo()}
             </p>
-            <div className={cn('flex items-center gap-4')}>
+            <div className='flex items-center gap-3'>
               <div>
                 <label
                   htmlFor='show-per-page'
-                  className={cn('mr-2 text-sm text-gray-600')}
+                  className='mr-2 text-sm text-gray-800'
                 >
                   Show per page:
                 </label>
                 <select
                   id='show-per-page'
-                  className={cn(
-                    'border rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500',
-                  )}
+                  className='border rounded px-3 py-1.5 text-sm focus:outline-none'
                   value={itemsPerPage}
                   onChange={handlePerPageChange}
+                  style={{
+                    fontFamily: FONT_FAMILY,
+                    minWidth: 52,
+                    background: '#fff',
+                  }}
                 >
                   {PER_PAGE_OPTIONS.map((opt) => (
                     <option key={opt} value={opt}>
@@ -402,19 +424,19 @@ const IdeasPage = () => {
                 </select>
               </div>
               <div>
-                <label
-                  htmlFor='sort-by'
-                  className={cn('mr-2 text-sm text-gray-600')}
-                >
+                <label htmlFor='sort-by' className='mr-2 text-sm text-gray-800'>
                   Sort by:
                 </label>
                 <select
                   id='sort-by'
-                  className={cn(
-                    'border rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500',
-                  )}
+                  className='border rounded px-3 py-1.5 text-sm focus:outline-none'
                   value={sortBy}
                   onChange={handleSortChange}
+                  style={{
+                    fontFamily: FONT_FAMILY,
+                    minWidth: 74,
+                    background: '#fff',
+                  }}
                 >
                   {SORT_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -427,18 +449,12 @@ const IdeasPage = () => {
           </div>
           <div
             id='post-grid'
-            className={cn(
-              'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6',
-            )}
+            className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6'
+            style={{ fontFamily: FONT_FAMILY }}
           >
             {renderPosts()}
           </div>
-          <div
-            id='pagination-controls'
-            className={cn('flex justify-center items-center mt-12 space-x-2')}
-          >
-            {renderPagination()}
-          </div>
+          {renderPagination()}
         </section>
       </main>
     </div>
