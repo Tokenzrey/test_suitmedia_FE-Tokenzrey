@@ -1,6 +1,4 @@
-import { NextRequest } from 'next/server';
-
-export async function GET(req: NextRequest) {
+export async function GET() {
   const url =
     'https://suitmedia.com/_ipx/w_100&f_webp&q_100/assets/img/site-logo.png';
   const res = await fetch(url);

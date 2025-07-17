@@ -1,16 +1,18 @@
 'use client';
+export const dynamic = 'force-dynamic';
 
-import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Image from 'next/image';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
+
 import { cn } from '@/lib/utils';
-import type { SuitmediaIdeas, IdeaPost } from '@/types/ideas';
+import type { IdeaPost, SuitmediaIdeas } from '@/types/ideas';
 
 const API_BASE_URL = '/api/ideas';
 const HEADER_HEIGHT = 72;
 const ORANGE = '#FF6600';
-const FONT_FAMILY = 'Inter, Arial, sans-serif';
 const SORT_OPTIONS = [
   { value: '-published_at', label: 'Newest' },
   { value: 'published_at', label: 'Oldest' },
@@ -38,49 +40,213 @@ function getProxyUrl(url: string) {
   return `/api/image-proxy?url=${encodeURIComponent(url)}`;
 }
 
-const SafeImage = ({ src, alt, onError, onLoad, ...props }: any) => {
-  const [error, setError] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  const handleError = () => {
-    setError(true);
-    setLoading(false);
-    onError?.();
-  };
-
-  const handleLoad = () => {
-    setLoading(false);
-    onLoad?.();
-  };
-
-  if (error) {
-    return (
-      <div className='w-full h-full flex items-center justify-center bg-gray-200'>
-        <div className='text-center p-4'>
-          <div className='text-gray-400 text-2xl mb-2'>📷</div>
-          <span className='text-gray-500 text-sm'>Image not available</span>
-        </div>
-      </div>
-    );
-  }
+function PostCard({ post }: { post: IdeaPost }) {
+  const imageUrl =
+    post.small_image?.[0]?.url ??
+    `https://placehold.co/400x300/e2e8f0/cbd5e0?text=No+Image`;
+  const publishedDate = new Date(post.published_at).toLocaleDateString(
+    'en-GB',
+    {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    },
+  );
 
   return (
-    <>
-      {loading && (
-        <div className='absolute inset-0 flex items-center justify-center bg-gray-100'>
-          <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500'></div>
-        </div>
+    <article
+      className={cn(
+        'bg-white rounded-lg shadow-md overflow-hidden flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1',
       )}
-      <Image
-        src={src}
-        alt={alt}
-        onError={handleError}
-        onLoad={handleLoad}
-        {...props}
-      />
-    </>
+    >
+      <div className={cn('w-full aspect-[4/3] relative overflow-hidden')}>
+        <Image
+          src={getProxyUrl(imageUrl)}
+          alt={post.title}
+          fill
+          loading='lazy'
+          sizes='(max-width: 768px) 100vw, 25vw'
+          className='object-cover transition-transform duration-300 hover:scale-105'
+        />
+      </div>
+      <div className='p-4 flex-1 flex flex-col'>
+        <time
+          className='text-xs text-gray-500 mb-2 font-medium tracking-wide uppercase'
+          dateTime={post.published_at}
+        >
+          {publishedDate}
+        </time>
+        <h3
+          className='font-semibold text-base text-gray-800 line-clamp-3 flex-1 hover:text-orange-600 transition-colors'
+          title={post.title}
+        >
+          {post.title}
+        </h3>
+      </div>
+    </article>
   );
-};
+}
+
+function Pagination({
+  currentPage,
+  totalPages,
+  setCurrentPage,
+}: {
+  currentPage: number;
+  totalPages: number;
+  setCurrentPage: (page: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+
+  const getPageNumbers = () => {
+    const pages: (number | '...')[] = [];
+    const maxVisible = 5;
+
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      pages.push(1);
+
+      if (currentPage > 3) {
+        pages.push('...');
+      }
+
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+
+      if (currentPage < totalPages - 2) {
+        pages.push('...');
+      }
+
+      pages.push(totalPages);
+    }
+
+    return pages;
+  };
+
+  return (
+    <nav
+      className='flex items-center justify-center mt-8 mb-4'
+      aria-label='Pagination'
+    >
+      <div className='flex items-center gap-1'>
+        <button
+          className={cn(
+            'px-3 py-2 rounded-md text-sm font-medium transition-colors',
+            currentPage === 1
+              ? 'text-gray-400 cursor-not-allowed'
+              : 'text-gray-700 hover:bg-gray-100',
+          )}
+          disabled={currentPage === 1}
+          onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
+          aria-label='Previous page'
+        >
+          ← Previous
+        </button>
+
+        {getPageNumbers().map((page, idx) =>
+          page === '...' ? (
+            <span key={idx} className='px-3 py-2 text-gray-400'>
+              ...
+            </span>
+          ) : (
+            <button
+              key={idx}
+              className={cn(
+                'px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                page === currentPage
+                  ? 'bg-orange-500 text-white shadow-md'
+                  : 'text-gray-700 hover:bg-gray-100',
+              )}
+              onClick={() => typeof page === 'number' && setCurrentPage(page)}
+              aria-label={`Go to page ${page}`}
+              aria-current={page === currentPage ? 'page' : undefined}
+            >
+              {page}
+            </button>
+          ),
+        )}
+
+        <button
+          className={cn(
+            'px-3 py-2 rounded-md text-sm font-medium transition-colors',
+            currentPage === totalPages
+              ? 'text-gray-400 cursor-not-allowed'
+              : 'text-gray-700 hover:bg-gray-100',
+          )}
+          disabled={currentPage === totalPages}
+          onClick={() =>
+            currentPage < totalPages && setCurrentPage(currentPage + 1)
+          }
+          aria-label='Next page'
+        >
+          Next →
+        </button>
+      </div>
+    </nav>
+  );
+}
+
+function Filters({
+  itemsPerPage,
+  sortBy,
+  handleSortChange,
+  handlePerPageChange,
+}: {
+  itemsPerPage: number;
+  sortBy: string;
+  handleSortChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  handlePerPageChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+}) {
+  return (
+    <div className='flex flex-col sm:flex-row items-start sm:items-center gap-4'>
+      <div className='flex items-center gap-2'>
+        <label
+          htmlFor='show-per-page'
+          className='text-sm text-gray-700 font-medium'
+        >
+          Show per page:
+        </label>
+        <select
+          id='show-per-page'
+          className='border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent'
+          value={itemsPerPage}
+          onChange={handlePerPageChange}
+        >
+          {PER_PAGE_OPTIONS.map((opt) => (
+            <option key={opt} value={opt}>
+              {opt}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className='flex items-center gap-2'>
+        <label htmlFor='sort-by' className='text-sm text-gray-700 font-medium'>
+          Sort by:
+        </label>
+        <select
+          id='sort-by'
+          className='border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent'
+          value={sortBy}
+          onChange={handleSortChange}
+        >
+          {SORT_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+}
 
 const IdeasPage = () => {
   const pathname = usePathname();
@@ -88,28 +254,46 @@ const IdeasPage = () => {
   const [itemsPerPage, setItemsPerPage] = useState<number>(10);
   const [sortBy, setSortBy] = useState<string>('-published_at');
   const [headerHidden, setHeaderHidden] = useState<boolean>(false);
+  const [bannerOffset, setBannerOffset] = useState<number>(0);
 
+  // State persistence: only client
   useEffect(() => {
-    const saved = localStorage.getItem('ideaPageState');
-    if (saved) {
-      try {
-        const { currentPage, itemsPerPage, sortBy } = JSON.parse(saved);
-        setCurrentPage(currentPage);
-        setItemsPerPage(itemsPerPage);
-        setSortBy(sortBy);
-      } catch (error) {}
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('ideaPageState');
+      if (saved) {
+        try {
+          const state = JSON.parse(saved) as {
+            currentPage: number;
+            itemsPerPage: number;
+            sortBy: string;
+          };
+          if (typeof state.currentPage === 'number')
+            setCurrentPage(state.currentPage);
+          if (typeof state.itemsPerPage === 'number')
+            setItemsPerPage(state.itemsPerPage);
+          if (typeof state.sortBy === 'string') setSortBy(state.sortBy);
+        } catch {
+          setCurrentPage(1);
+          setItemsPerPage(10);
+          setSortBy('-published_at');
+        }
+      }
     }
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(
-      'ideaPageState',
-      JSON.stringify({ currentPage, itemsPerPage, sortBy }),
-    );
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(
+        'ideaPageState',
+        JSON.stringify({ currentPage, itemsPerPage, sortBy }),
+      );
+    }
   }, [currentPage, itemsPerPage, sortBy]);
 
+  // Header scroll hide/show (client only)
   const lastScrollY = useRef<number>(0);
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     const handler = () => {
       const y = window.scrollY;
       setHeaderHidden(y > lastScrollY.current && y > HEADER_HEIGHT);
@@ -119,7 +303,39 @@ const IdeasPage = () => {
     return () => window.removeEventListener('scroll', handler);
   }, []);
 
+  // Banner parallax effect (client only)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onScroll = () => {
+      const scrolled = window.scrollY;
+      setBannerOffset(scrolled * 0.3);
+    };
+    window.addEventListener('scroll', onScroll);
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Client-only fetch
   const fetchIdeas = async (): Promise<SuitmediaIdeas> => {
+    if (typeof window === 'undefined')
+      return {
+        data: [],
+        links: {
+          first: '',
+          last: '',
+          prev: null,
+          next: null,
+        },
+        meta: {
+          current_page: 1,
+          from: 0,
+          last_page: 1,
+          links: [],
+          path: '',
+          per_page: 10,
+          to: 0,
+          total: 0,
+        },
+      };
     const params = new URLSearchParams({
       'page[number]': currentPage.toString(),
       'page[size]': itemsPerPage.toString(),
@@ -149,244 +365,31 @@ const IdeasPage = () => {
     staleTime: 2 * 60 * 1000,
     retry: 3,
     retryDelay: 1000,
+    enabled: typeof window !== 'undefined',
   });
 
   const bannerUrl =
     'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=2070&auto=format&fit=crop';
-  const [bannerOffset, setBannerOffset] = useState<number>(0);
 
-  useEffect(() => {
-    const onScroll = () => {
-      const scrolled = window.scrollY;
-      setBannerOffset(scrolled * 0.3);
-    };
-    window.addEventListener('scroll', onScroll);
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
-  const totalItems = data?.meta?.total ?? 0;
-  const totalPages = data?.meta?.last_page ?? 1;
-
-  const renderPosts = () => {
-    if (isLoading) {
-      return (
-        <div className='col-span-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6'>
-          {Array.from({ length: itemsPerPage }, (_, i) => (
-            <div
-              key={i}
-              className='bg-white rounded-lg shadow-md overflow-hidden animate-pulse'
-            >
-              <div className='w-full aspect-[4/3] bg-gray-300'></div>
-              <div className='p-4'>
-                <div className='h-3 bg-gray-300 rounded mb-2 w-1/3'></div>
-                <div className='h-4 bg-gray-300 rounded mb-1'></div>
-                <div className='h-4 bg-gray-300 rounded w-3/4'></div>
-              </div>
-            </div>
-          ))}
-        </div>
-      );
-    }
-
-    if (error) {
-      return (
-        <div className='col-span-full text-center py-12'>
-          <div className='text-red-500 text-lg mb-4'>
-            ⚠️ Failed to load ideas
-          </div>
-          <p className='text-gray-600 mb-4'>{error.message}</p>
-          <button
-            onClick={() => refetch()}
-            className='bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded transition-colors'
-          >
-            Try Again
-          </button>
-        </div>
-      );
-    }
-
-    if (!data || !data.data || !data.data.length) {
-      return (
-        <div className='col-span-full text-center py-12'>
-          <div className='text-gray-400 text-6xl mb-4'>📝</div>
-          <p className='text-gray-500 text-lg'>No ideas found</p>
-        </div>
-      );
-    }
-
-    return data.data.map((post: IdeaPost) => {
-      let imageUrl = post.small_image?.[0]?.url ?? '';
-      if (!imageUrl) {
-        imageUrl = `https://placehold.co/400x300/e2e8f0/cbd5e0?text=No+Image`;
-      }
-
-      const publishedDate = new Date(post.published_at).toLocaleDateString(
-        'en-GB',
-        {
-          day: 'numeric',
-          month: 'long',
-          year: 'numeric',
-        },
-      );
-
-      return (
-        <article
-          key={post.id}
-          className={cn(
-            'bg-white rounded-lg shadow-md overflow-hidden flex flex-col',
-            'transition-all duration-300 hover:shadow-xl hover:-translate-y-1',
-          )}
-        >
-          <div
-            className={cn('w-full', 'aspect-[4/3]', 'relative overflow-hidden')}
-          >
-            <SafeImage
-              src={getProxyUrl(imageUrl)}
-              alt={post.title}
-              fill
-              loading='lazy'
-              sizes='(max-width: 768px) 100vw, 25vw'
-              unoptimized
-              className='object-cover transition-transform duration-300 hover:scale-105'
-            />
-          </div>
-          <div className='p-4 flex-1 flex flex-col'>
-            <time
-              className={cn(
-                'text-xs text-gray-500 mb-2',
-                'font-medium tracking-wide uppercase',
-              )}
-              dateTime={post.published_at}
-            >
-              {publishedDate}
-            </time>
-            <h3
-              className={cn(
-                'font-semibold text-base text-gray-800',
-                'line-clamp-3 flex-1',
-                'hover:text-orange-600 transition-colors',
-              )}
-              title={post.title}
-              style={{
-                fontFamily: FONT_FAMILY,
-                lineHeight: '1.5',
-                display: '-webkit-box',
-                WebkitLineClamp: 3,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-              }}
-            >
-              {post.title}
-            </h3>
-          </div>
-        </article>
-      );
-    });
-  };
-
-  const renderPagination = () => {
-    if (totalPages <= 1) return null;
-
-    const getPageNumbers = () => {
-      const pages: (number | '...')[] = [];
-      const maxVisible = 5;
-
-      if (totalPages <= maxVisible) {
-        for (let i = 1; i <= totalPages; i++) {
-          pages.push(i);
-        }
-      } else {
-        pages.push(1);
-
-        if (currentPage > 3) {
-          pages.push('...');
-        }
-
-        const start = Math.max(2, currentPage - 1);
-        const end = Math.min(totalPages - 1, currentPage + 1);
-
-        for (let i = start; i <= end; i++) {
-          pages.push(i);
-        }
-
-        if (currentPage < totalPages - 2) {
-          pages.push('...');
-        }
-
-        pages.push(totalPages);
-      }
-
-      return pages;
-    };
-
-    return (
-      <nav
-        className='flex items-center justify-center mt-8 mb-4'
-        aria-label='Pagination'
-        style={{ fontFamily: FONT_FAMILY }}
-      >
-        <div className='flex items-center gap-1'>
-          <button
-            className={cn(
-              'px-3 py-2 rounded-md text-sm font-medium transition-colors',
-              currentPage === 1
-                ? 'text-gray-400 cursor-not-allowed'
-                : 'text-gray-700 hover:bg-gray-100',
-            )}
-            disabled={currentPage === 1}
-            onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
-            aria-label='Previous page'
-          >
-            ← Previous
-          </button>
-
-          {getPageNumbers().map((page, idx) =>
-            page === '...' ? (
-              <span key={idx} className='px-3 py-2 text-gray-400'>
-                ...
-              </span>
-            ) : (
-              <button
-                key={idx}
-                className={cn(
-                  'px-3 py-2 rounded-md text-sm font-medium transition-colors',
-                  page === currentPage
-                    ? 'bg-orange-500 text-white shadow-md'
-                    : 'text-gray-700 hover:bg-gray-100',
-                )}
-                onClick={() => typeof page === 'number' && setCurrentPage(page)}
-                aria-label={`Go to page ${page}`}
-                aria-current={page === currentPage ? 'page' : undefined}
-              >
-                {page}
-              </button>
-            ),
-          )}
-
-          <button
-            className={cn(
-              'px-3 py-2 rounded-md text-sm font-medium transition-colors',
-              currentPage === totalPages
-                ? 'text-gray-400 cursor-not-allowed'
-                : 'text-gray-700 hover:bg-gray-100',
-            )}
-            disabled={currentPage === totalPages}
-            onClick={() =>
-              currentPage < totalPages && setCurrentPage(currentPage + 1)
-            }
-            aria-label='Next page'
-          >
-            Next →
-          </button>
-        </div>
-      </nav>
-    );
-  };
+  const totalItems =
+    typeof data !== 'undefined' &&
+    data &&
+    'meta' in data &&
+    typeof data.meta.total === 'number'
+      ? data.meta.total
+      : 0;
+  const totalPages =
+    typeof data !== 'undefined' &&
+    data &&
+    'meta' in data &&
+    typeof data.meta.last_page === 'number'
+      ? data.meta.last_page
+      : 1;
 
   const getShowingInfo = () => {
-    if (isLoading || !data) return 'Loading...';
+    if (isLoading || typeof data === 'undefined' || !data || !('meta' in data))
+      return 'Loading...';
     if (totalItems === 0) return 'No items found';
-
     const startItem = (currentPage - 1) * itemsPerPage + 1;
     const endItem = Math.min(startItem + itemsPerPage - 1, totalItems);
     return `Showing ${startItem} - ${endItem} of ${totalItems}`;
@@ -405,13 +408,7 @@ const IdeasPage = () => {
   const menu = getMenu(pathname);
 
   return (
-    <div
-      style={{
-        fontFamily: FONT_FAMILY,
-        background: '#fafafb',
-        minHeight: '100vh',
-      }}
-    >
+    <div className='font-sans bg-[#fafafb] min-h-screen'>
       <header
         id='main-header'
         className={cn(
@@ -434,7 +431,7 @@ const IdeasPage = () => {
           }}
         >
           <div className='flex items-center gap-8 h-full'>
-            <a href='/' className='flex items-center h-full'>
+            <Link href='/' className='flex items-center h-full'>
               <Image
                 src='/api/logo-proxy'
                 alt='Suitmedia Digital Agency'
@@ -447,11 +444,11 @@ const IdeasPage = () => {
                 }}
                 className='ease-in-out duration-200 transition-all site-logo logos-invert'
               />
-            </a>
+            </Link>
           </div>
           <nav className='flex items-center gap-8'>
             {menu.map((item) => (
-              <a
+              <Link
                 key={item.href}
                 href={item.href}
                 className={cn(
@@ -460,10 +457,9 @@ const IdeasPage = () => {
                     ? 'text-white after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-white'
                     : 'text-white/90 hover:text-white',
                 )}
-                style={{ fontFamily: FONT_FAMILY }}
               >
                 {item.label}
-              </a>
+              </Link>
             ))}
           </nav>
         </div>
@@ -504,16 +500,10 @@ const IdeasPage = () => {
             />
           </div>
           <div className='relative z-20 text-center px-4 flex flex-col items-center justify-center w-full'>
-            <h1
-              className='text-4xl md:text-5xl font-bold drop-shadow-lg mb-4'
-              style={{ fontFamily: FONT_FAMILY, letterSpacing: '0.5px' }}
-            >
+            <h1 className='text-4xl md:text-5xl font-bold drop-shadow-lg mb-4'>
               Ideas
             </h1>
-            <p
-              className='text-lg md:text-xl drop-shadow-md'
-              style={{ fontFamily: FONT_FAMILY, fontWeight: 400 }}
-            >
+            <p className='text-lg md:text-xl drop-shadow-md font-normal'>
               Where all our great things begin
             </p>
           </div>
@@ -523,71 +513,53 @@ const IdeasPage = () => {
           className='mx-auto px-4 md:px-10'
           style={{ maxWidth: 1200, paddingTop: 36 }}
         >
-          <div
-            className='flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4'
-            style={{ fontFamily: FONT_FAMILY }}
-          >
+          <div className='flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4'>
             <div className='flex items-center gap-4'>
               <p className='text-gray-800 text-sm font-medium'>
                 {getShowingInfo()}
               </p>
             </div>
-
-            <div className='flex flex-col sm:flex-row items-start sm:items-center gap-4'>
-              <div className='flex items-center gap-2'>
-                <label
-                  htmlFor='show-per-page'
-                  className='text-sm text-gray-700 font-medium'
-                >
-                  Show per page:
-                </label>
-                <select
-                  id='show-per-page'
-                  className='border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent'
-                  value={itemsPerPage}
-                  onChange={handlePerPageChange}
-                  style={{ fontFamily: FONT_FAMILY, minWidth: 70 }}
-                >
-                  {PER_PAGE_OPTIONS.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className='flex items-center gap-2'>
-                <label
-                  htmlFor='sort-by'
-                  className='text-sm text-gray-700 font-medium'
-                >
-                  Sort by:
-                </label>
-                <select
-                  id='sort-by'
-                  className='border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent'
-                  value={sortBy}
-                  onChange={handleSortChange}
-                  style={{ fontFamily: FONT_FAMILY, minWidth: 100 }}
-                >
-                  {SORT_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
+            <Filters
+              itemsPerPage={itemsPerPage}
+              sortBy={sortBy}
+              handleSortChange={handleSortChange}
+              handlePerPageChange={handlePerPageChange}
+            />
           </div>
-
-          <div
-            className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
-            style={{ fontFamily: FONT_FAMILY }}
-          >
-            {renderPosts()}
+          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'>
+            {error ? (
+              <div className='col-span-full text-center py-12'>
+                <div className='text-red-500 text-lg mb-4'>
+                  ⚠️ Failed to load ideas
+                </div>
+                <p className='text-gray-600 mb-4'>{error.message}</p>
+                <button
+                  onClick={() => refetch()}
+                  className='bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded transition-colors'
+                >
+                  Try Again
+                </button>
+              </div>
+            ) : typeof data !== 'undefined' &&
+              data &&
+              'data' in data &&
+              Array.isArray(data.data) &&
+              data.data.length > 0 ? (
+              data.data.map((post: IdeaPost) => (
+                <PostCard key={post.id} post={post} />
+              ))
+            ) : (
+              <div className='col-span-full text-center py-12'>
+                <div className='text-gray-400 text-6xl mb-4'>📝</div>
+                <p className='text-gray-500 text-lg'>No ideas found</p>
+              </div>
+            )}
           </div>
-
-          {renderPagination()}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            setCurrentPage={setCurrentPage}
+          />
         </section>
       </main>
     </div>
