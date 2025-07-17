@@ -86,6 +86,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'assets.suitdev.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'suitmedia.com',
+      },
     ],
   },
   // Apply security headers to every route
