@@ -435,16 +435,17 @@ const IdeasPage = () => {
         >
           <div className='flex items-center gap-8 h-full'>
             <a href='/' className='flex items-center h-full'>
-              <img
-                srcSet='https://suitmedia.com/_ipx/w_100&f_webp&q_100/assets/img/site-logo.png 1x, https://suitmedia.com/_ipx/w_200&f_webp&q_100/assets/img/site-logo.png 2x'
-                src='https://suitmedia.com/_ipx/w_100&f_webp&q_100/assets/img/site-logo.png'
+              <Image
+                src='/api/logo-proxy'
                 alt='Suitmedia Digital Agency'
-                title='Suitmedia Digital Agency'
                 width={100}
-                style={{ marginRight: 12, height: 32 }}
+                height={32}
+                style={{
+                  marginRight: 12,
+                  height: 32,
+                  filter: 'brightness(0) invert(1)',
+                }}
                 className='ease-in-out duration-200 transition-all site-logo logos-invert'
-                data-nuxt-img=''
-                onError={(e) => e.currentTarget.setAttribute('data-error', '1')}
               />
             </a>
           </div>
