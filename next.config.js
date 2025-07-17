@@ -17,7 +17,7 @@ const ContentSecurityPolicy = `
   script-src 'self' 'unsafe-inline' 'unsafe-eval';
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
   font-src 'self' https://fonts.gstatic.com;
-  img-src 'self' https://images.unsplash.com data:;
+  img-src 'self' https://images.unsplash.com https://assets.suitdev.com data:;
   connect-src 'self' https://suitmedia-backend.suitdev.com;
   object-src 'none';
   base-uri 'self';
@@ -72,6 +72,13 @@ const nextConfig = {
     dirs: ['src'],
   },
 
+  images: {
+    domains: [
+      'images.unsplash.com',
+      'suitmedia-backend.suitdev.com',
+      'assets.suitdev.com',
+    ],
+  },
   // Apply security headers to every route
   async headers() {
     return [

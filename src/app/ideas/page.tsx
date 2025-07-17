@@ -3,35 +3,63 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Image from 'next/image';
+import { usePathname } from 'next/navigation';
+import { cn } from '@/lib/utils';
 
+type IdeaImage = { url: string };
 type Idea = {
   id: number;
   title: string;
   published_at: string;
-  small_image?: { url: string }[];
+  small_image?: IdeaImage[];
+  medium_image?: IdeaImage[];
 };
-
 type ApiResponse = {
   data: Idea[];
   meta: {
     total: number;
     last_page: number;
   };
+  banner?: {
+    url: string;
+  };
 };
 
-const API_BASE_URL = 'https://suitmedia-backend.suitdev.com/api/ideas';
+const API_BASE_URL = '/api/ideas';
 const HEADER_HEIGHT = 72;
+const SORT_OPTIONS = [
+  { value: '-published_at', label: 'Terbaru' },
+  { value: 'published_at', label: 'Terlama' },
+];
+const PER_PAGE_OPTIONS = [10, 20, 50];
+
+function getMenu(path: string) {
+  return [
+    { href: '/work', label: 'Work' },
+    { href: '/about', label: 'About' },
+    { href: '/services', label: 'Services' },
+    { href: '/ideas', label: 'Ideas' },
+    { href: '/careers', label: 'Careers' },
+    { href: '/contact', label: 'Contact' },
+  ].map((item) => ({
+    ...item,
+    active:
+      path.startsWith(item.href) ||
+      (item.href === '/ideas' && path === '/ideas'),
+  }));
+}
 
 const IdeasPage = () => {
+  const pathname = usePathname();
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(10);
   const [sortBy, setSortBy] = useState<string>('-published_at');
   const [headerHidden, setHeaderHidden] = useState<boolean>(false);
 
   useEffect(() => {
-    const savedState = localStorage.getItem('ideaPageState');
-    if (savedState) {
-      const { currentPage, itemsPerPage, sortBy } = JSON.parse(savedState);
+    const saved = localStorage.getItem('ideaPageState');
+    if (saved) {
+      const { currentPage, itemsPerPage, sortBy } = JSON.parse(saved);
       setCurrentPage(currentPage);
       setItemsPerPage(itemsPerPage);
       setSortBy(sortBy);
@@ -45,10 +73,18 @@ const IdeasPage = () => {
     );
   }, [currentPage, itemsPerPage, sortBy]);
 
+  const lastScrollY = useRef<number>(0);
+  useEffect(() => {
+    const handler = () => {
+      const y = window.scrollY;
+      setHeaderHidden(y > lastScrollY.current);
+      lastScrollY.current = y;
+    };
+    window.addEventListener('scroll', handler);
+    return () => window.removeEventListener('scroll', handler);
+  }, []);
+
   const fetchIdeas = async (): Promise<ApiResponse> => {
-    if (typeof window === 'undefined') {
-      return { data: [], meta: { total: 0, last_page: 1 } };
-    }
     const params = new URLSearchParams({
       'page[number]': currentPage.toString(),
       'page[size]': itemsPerPage.toString(),
@@ -56,8 +92,12 @@ const IdeasPage = () => {
     });
     params.append('append[]', 'small_image');
     params.append('append[]', 'medium_image');
-
-    const response = await fetch(`${API_BASE_URL}?${params.toString()}`);
+    const response = await fetch(`${API_BASE_URL}?${params.toString()}`, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+      },
+    });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     return response.json();
   };
@@ -65,22 +105,21 @@ const IdeasPage = () => {
   const { data, error, isLoading } = useQuery<ApiResponse, Error>({
     queryKey: ['ideas', currentPage, itemsPerPage, sortBy],
     queryFn: fetchIdeas,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-    enabled: typeof window !== 'undefined',
     staleTime: 2 * 60 * 1000,
   });
 
-  const lastScrollY = useRef<number>(0);
+  const bannerUrl =
+    data?.banner?.url ||
+    'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=2070&auto=format&fit=crop';
 
+  const [bannerOffset, setBannerOffset] = useState<number>(0);
   useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      setHeaderHidden(currentScrollY > lastScrollY.current);
-      lastScrollY.current = currentScrollY;
+    const onScroll = () => {
+      const scrolled = window.scrollY;
+      setBannerOffset(scrolled * 0.5);
     };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', onScroll);
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
   const totalItems = data?.meta?.total ?? 0;
@@ -89,26 +128,23 @@ const IdeasPage = () => {
   const renderPosts = () => {
     if (isLoading)
       return (
-        <p className='col-span-full text-center text-gray-500'>
+        <p className={cn('col-span-full', 'text-center text-gray-500')}>
           Fetching ideas...
         </p>
       );
-
     if (error)
       return (
-        <p className='col-span-full text-center text-red-500'>
+        <p className={cn('col-span-full', 'text-center text-red-500')}>
           Gagal memuat ide. Silakan periksa konsol untuk detailnya. (
           {error.message})
         </p>
       );
-
     if (!data || !data.data || !data.data.length)
       return (
-        <p className='col-span-full text-center text-gray-500'>
+        <p className={cn('col-span-full', 'text-center text-gray-500')}>
           No ideas found.
         </p>
       );
-
     return data.data.map((post: Idea) => {
       const imageUrl =
         post.small_image && post.small_image[0]
@@ -125,26 +161,27 @@ const IdeasPage = () => {
       return (
         <div
           key={post.id}
-          className='bg-white rounded-lg shadow-md overflow-hidden transform hover:-translate-y-1 transition-transform duration-300'
+          className={cn(
+            'bg-white rounded-lg shadow-md overflow-hidden flex flex-col',
+          )}
         >
-          <div className='w-full h-48 relative'>
+          <div className={cn('w-full', 'aspect-[4/3]', 'relative')}>
             <Image
               src={imageUrl}
               alt={post.title}
               fill
-              className='object-cover rounded-t-lg'
+              className={cn('object-cover')}
+              loading='lazy'
               sizes='(max-width: 768px) 100vw, 25vw'
-              onError={(e: any) => {
-                e.target.src =
-                  'https://placehold.co/400x300/e2e8f0/cbd5e0?text=Error';
-              }}
+              style={{ borderRadius: '0.5rem 0.5rem 0 0' }}
             />
           </div>
-          <div className='p-4'>
-            <p className='text-xs text-gray-500 mb-2'>{publishedDate}</p>
+          <div className={cn('p-4 flex-1 flex flex-col')}>
+            <p className={cn('text-xs text-gray-500 mb-2')}>{publishedDate}</p>
             <h3
-              className='font-bold text-md h-20 overflow-hidden text-ellipsis line-clamp-3'
+              className={cn('font-bold text-md', 'line-clamp-3')}
               title={post.title}
+              style={{ maxHeight: '4.5em', minHeight: '4.5em' }}
             >
               {post.title}
             </h3>
@@ -165,18 +202,18 @@ const IdeasPage = () => {
       ) {
         buttons.push(i);
       } else if (i === currentPage - 2 || i === currentPage + 2) {
-        buttons.push('...');
+        if (buttons[buttons.length - 1] !== '...') buttons.push('...');
       }
     }
-
     return (
       <>
         <button
-          className={`px-3 py-1 border rounded-md text-sm ${
+          className={cn(
+            'px-3 py-1 border rounded-md text-sm',
             currentPage === 1
               ? 'text-gray-400 cursor-not-allowed'
-              : 'hover:bg-gray-200'
-          }`}
+              : 'hover:bg-gray-200',
+          )}
           disabled={currentPage === 1}
           onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
         >
@@ -184,17 +221,18 @@ const IdeasPage = () => {
         </button>
         {buttons.map((btn, idx) =>
           btn === '...' ? (
-            <span key={idx} className='px-3 py-1'>
+            <span key={idx} className={cn('px-3 py-1')}>
               ...
             </span>
           ) : (
             <button
               key={idx}
-              className={`px-3 py-1 border rounded-md text-sm ${
+              className={cn(
+                'px-3 py-1 border rounded-md text-sm',
                 btn === currentPage
                   ? 'bg-[#FF6600] text-white border-[#FF6600]'
-                  : 'hover:bg-gray-200'
-              }`}
+                  : 'hover:bg-gray-200',
+              )}
               onClick={() => typeof btn === 'number' && setCurrentPage(btn)}
             >
               {btn}
@@ -202,11 +240,12 @@ const IdeasPage = () => {
           ),
         )}
         <button
-          className={`px-3 py-1 border rounded-md text-sm ${
+          className={cn(
+            'px-3 py-1 border rounded-md text-sm',
             currentPage === totalPages
               ? 'text-gray-400 cursor-not-allowed'
-              : 'hover:bg-gray-200'
-          }`}
+              : 'hover:bg-gray-200',
+          )}
           disabled={currentPage === totalPages}
           onClick={() =>
             currentPage < totalPages && setCurrentPage(currentPage + 1)
@@ -224,59 +263,50 @@ const IdeasPage = () => {
     return `Showing ${startItem} - ${endItem} of ${totalItems} items`;
   };
 
-  return (
-    <>
-      <link
-        rel='preconnect'
-        href='https://fonts.googleapis.com'
-        crossOrigin='anonymous'
-      />
-      <link
-        rel='preconnect'
-        href='https://fonts.gstatic.com'
-        crossOrigin='anonymous'
-      />
-      <link
-        href='https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap'
-        rel='stylesheet'
-      />
+  const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSortBy(e.target.value);
+  };
+  const handlePerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setItemsPerPage(Number(e.target.value));
+  };
 
+  const menu = getMenu(pathname);
+
+  return (
+    <div className={cn('font-sans bg-[#f8f9fa] min-h-screen')}>
       <header
         id='main-header'
-        className={`fixed top-0 left-0 right-0 z-50 bg-[#FF6600] shadow-md transition-transform duration-300 ${
-          headerHidden ? '-translate-y-full' : ''
-        }`}
+        className={cn(
+          'fixed top-0 left-0 right-0 z-50 shadow-md transition-transform duration-300 bg-white bg-opacity-90 backdrop-blur',
+          headerHidden && '-translate-y-full',
+        )}
         style={{ height: HEADER_HEIGHT }}
       >
-        <div className='container mx-auto px-6 py-4'>
-          <nav className='flex items-center justify-between'>
-            <a href='#' className='text-2xl font-bold text-white'>
+        <div className={cn('container mx-auto px-6 py-4')}>
+          <nav className={cn('flex items-center justify-between')}>
+            <a href='/' className={cn('text-2xl font-bold text-[#FF6600]')}>
               Suitmedia
             </a>
-            <div className='hidden md:flex items-center space-x-8'>
-              <a href='#' className='text-white/90 hover:text-white'>
-                Work
-              </a>
-              <a href='#' className='text-white/90 hover:text-white'>
-                About
-              </a>
-              <a href='#' className='text-white/90 hover:text-white'>
-                Services
-              </a>
-              <a className='text-white font-bold border-b-2 border-white pb-1'>
-                Ideas
-              </a>
-              <a href='#' className='text-white/90 hover:text-white'>
-                Careers
-              </a>
-              <a href='#' className='text-white/90 hover:text-white'>
-                Contact
-              </a>
+            <div className={cn('hidden md:flex items-center space-x-8')}>
+              {menu.map((item) => (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    'transition-colors',
+                    item.active
+                      ? 'font-bold text-[#FF6600] border-b-2 border-[#FF6600] pb-1'
+                      : 'text-gray-700 hover:text-[#FF6600]',
+                  )}
+                >
+                  {item.label}
+                </a>
+              ))}
             </div>
-            <div className='md:hidden'>
-              <button className='text-white focus:outline-none'>
+            <div className={cn('md:hidden')}>
+              <button className={cn('text-[#FF6600] focus:outline-none')}>
                 <svg
-                  className='w-6 h-6'
+                  className={cn('w-6 h-6')}
                   fill='none'
                   stroke='currentColor'
                   viewBox='0 0 24 24'
@@ -294,91 +324,124 @@ const IdeasPage = () => {
           </nav>
         </div>
       </header>
-
       <main>
         <section
-          className='relative h-[60vh] flex items-center justify-center text-white bg-cover bg-center bg-no-repeat'
+          className={cn(
+            'relative h-[60vh] flex items-center justify-center text-white overflow-hidden',
+          )}
           style={{
-            backgroundImage:
-              "url('https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=2070&auto=format&fit=crop')",
-            backgroundAttachment: 'fixed',
+            marginTop: HEADER_HEIGHT,
+            background: 'transparent',
           }}
         >
-          <div className='absolute inset-0 bg-black/60'></div>
-          <div className='relative z-10 text-center px-4'>
-            <h1 className='text-5xl md:text-7xl font-bold drop-shadow-lg'>
+          <div
+            className={cn('absolute inset-0', 'w-full h-full z-0')}
+            style={{
+              willChange: 'transform',
+              transform: `translateY(${bannerOffset}px)`,
+            }}
+          >
+            <Image
+              src={bannerUrl}
+              alt='Banner'
+              fill
+              priority
+              className={cn('object-cover')}
+              style={{ zIndex: 0 }}
+            />
+            <div className={cn('absolute inset-0 bg-black/60')}></div>
+            <div
+              className={cn(
+                'absolute bottom-0 right-0 w-0 h-0 border-b-[12vh] md:border-b-[15vh] border-l-[100vw] border-b-white border-l-transparent z-20',
+              )}
+            />
+          </div>
+          <div
+            className={cn(
+              'relative z-10 text-center px-4 flex flex-col items-center justify-center w-full',
+            )}
+          >
+            <h1 className={cn('text-5xl md:text-7xl font-bold drop-shadow-lg')}>
               Ideas
             </h1>
-            <p className='text-xl md:text-2xl mt-4 drop-shadow-md'>
+            <p className={cn('text-xl md:text-2xl mt-4 drop-shadow-md')}>
               Where all our great things begin
             </p>
           </div>
-          <div className='absolute bottom-0 right-0 w-0 h-0 border-b-[12vh] md:border-b-[15vh] border-l-[100vw] border-b-white border-l-transparent z-20'></div>
         </section>
-
-        <section className='container mx-auto px-6 py-12'>
-          <div className='flex flex-col md:flex-row justify-between items-center mb-8 gap-4'>
-            <p id='showing-info' className='text-gray-600'>
+        <section className={cn('container mx-auto px-6 py-12')}>
+          <div
+            className={cn(
+              'flex flex-col md:flex-row justify-between items-center mb-8 gap-4',
+            )}
+          >
+            <p id='showing-info' className={cn('text-gray-600')}>
               {isLoading || !data ? 'Loading...' : updateShowingInfo()}
             </p>
-            <div className='flex items-center gap-4'>
+            <div className={cn('flex items-center gap-4')}>
               <div>
                 <label
                   htmlFor='show-per-page'
-                  className='mr-2 text-sm text-gray-600'
+                  className={cn('mr-2 text-sm text-gray-600')}
                 >
                   Show per page:
                 </label>
                 <select
                   id='show-per-page'
-                  className='border rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500'
+                  className={cn(
+                    'border rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500',
+                  )}
                   value={itemsPerPage}
-                  onChange={(e) => {
-                    setItemsPerPage(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
+                  onChange={handlePerPageChange}
                 >
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
-                  <option value={50}>50</option>
+                  {PER_PAGE_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
-                <label htmlFor='sort-by' className='mr-2 text-sm text-gray-600'>
+                <label
+                  htmlFor='sort-by'
+                  className={cn('mr-2 text-sm text-gray-600')}
+                >
                   Sort by:
                 </label>
                 <select
                   id='sort-by'
-                  className='border rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500'
+                  className={cn(
+                    'border rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500',
+                  )}
                   value={sortBy}
-                  onChange={(e) => {
-                    setSortBy(e.target.value);
-                    setCurrentPage(1);
-                  }}
+                  onChange={handleSortChange}
                 >
-                  <option value='-published_at'>Newest</option>
-                  <option value='published_at'>Oldest</option>
+                  {SORT_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
           </div>
-
           <div
             id='post-grid'
-            className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6'
+            className={cn(
+              'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6',
+            )}
           >
             {renderPosts()}
           </div>
-
           <div
             id='pagination-controls'
-            className='flex justify-center items-center mt-12 space-x-2'
+            className={cn('flex justify-center items-center mt-12 space-x-2')}
           >
             {renderPagination()}
           </div>
         </section>
       </main>
-    </>
+    </div>
   );
 };
 
